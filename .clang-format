@@ -7,3 +7,4 @@ AlignAfterOpenBracket: AlwaysBreak
 #todo
 #AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: Left
+SortIncludes: CaseSensitive
