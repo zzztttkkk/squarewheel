@@ -25,13 +25,8 @@ int main() {
 
 	vec.at(vec.size() - 1) = 990;
 
-	bool break_flag = false;
-	vec.removeif([&break_flag](size_t idx, const int& val) -> bool {
-		if (idx == 45) {
-			break_flag = true;
-		}
-		return false;
-	}, &break_flag);
+	vec.removeif([](size_t _, const int& val) -> bool { return val > 3; })
+			.map([](size_t _, const int& val) -> std::optional<int> { return val + 6; });
 
 	sw::println("{}", vec.printable_string());
 	vec.clear();

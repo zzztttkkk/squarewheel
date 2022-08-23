@@ -21,7 +21,10 @@ private:
 	size_t _size = 0;
 	size_t _cap = 0;
 
-	static inline T* allocate(size_t size) { return new T[size]; }
+	// avoid `constructor` and `destructor` call
+	static inline T* allocate(size_t size) { return reinterpret_cast<T*>(std::malloc(size * sizeof(T))); }
+
+	static inline void release(T* ptr) { std::free(ptr); }
 
 	static inline void copy(T* dest, T* src, size_t s) {
 		if (s < 1) return;
@@ -32,7 +35,7 @@ private:
 		if (s <= _cap) return;
 		T* nptr = allocate(s);
 		copy(nptr, _ptr, _size);
-		delete[] _ptr;
+		release(_ptr);
 		_ptr = nptr;
 		_cap = s;
 	}
@@ -47,7 +50,8 @@ private:
 	}
 
 public:
-	typedef T EleType;
+	typedef T Ele;
+	typedef Vec<T> This;
 
 	Vec() = default;
 
@@ -67,9 +71,10 @@ public:
 
 	[[nodiscard]] inline size_t capacity() const { return _cap; }
 
-	inline void push(const T& val) {
+	inline This& push(const T& val) {
 		if (_size + 1 > _cap) auto_grow();
 		push_unchecked(val);
+		return *this;
 	}
 
 	inline std::optional<T> pop() {
@@ -87,14 +92,14 @@ public:
 
 #define VecAtEmpty
 
-	VecAt(VecAtEmpty)
+	VecAt(VecAtEmpty);
 
-	VecAt(const)
+	VecAt(const);
 
 #undef VecAtEmpty
 #undef VecAt
 
-	void removeif(std::function<bool(size_t, const T&)> fn, const bool* break_ptr = nullptr) {
+	This& removeif(std::function<bool(size_t, const T&)> fn, const bool* break_ptr = nullptr) {
 		SimpleBitmap marks;
 		marks.preallocate(_size);
 
@@ -111,56 +116,73 @@ public:
 
 		if (count >= _size) {
 			_size = 0;
-			return;
+			return *this;
 		}
 
-		if (_size <= 30) {
-			T* nptr = allocate(_size - count);
-			size_t j = 0;
-			for (size_t i = 0; i < _size; ++i) {
-				if (marks.has(static_cast<uint64_t>(i))) continue;
-				nptr[j] = _ptr[i];
-				j++;
-			}
-			delete[] _ptr;
-			_ptr = nptr;
-			_size -= count;
-			_cap = _size;
-			return;
+		T* nptr = allocate(_size - count);
+		size_t j = 0;
+		for (size_t i = 0; i < _size; ++i) {
+			if (marks.has(static_cast<uint64_t>(i))) continue;
+			nptr[j] = _ptr[i];
+			j++;
 		}
+		release(_ptr);
+		_ptr = nptr;
+		_size -= count;
+		_cap = _size;
+
+		return *this;
 	}
 
-	inline void concat(const T* ptr, size_t size) {
+	This& map(std::function<std::optional<T>(size_t, const T&)> fn, const bool* break_ptr = nullptr) {
+		for (int i = 0; i < _size; ++i) {
+			std::optional<T> result = fn(i, _ptr[i]);
+			if (result.has_value()) {
+				_ptr[i] = result.value();
+			}
+			if (break_ptr != nullptr && *break_ptr) {
+				break;
+			}
+		}
+		return *this;
+	}
+
+	inline This& concat(const T* ptr, size_t size) {
 		grow_to(_size + size);
 		std::memcpy(_ptr + _size, ptr, size * sizeof(T));
 		_size += size;
+		return *this;
 	}
 
 	template<typename Seq>
-	void concat(const Seq& seq) {
+	This& concat(const Seq& seq) {
 		auto size = seq.size();
-		if (size < 1) return;
+		if (size < 1) return *this;
 
 		if (size > 20 && size > (_size >> 1)) {
 			grow_to(_size + size);
-			auto begin = seq.begin();
+			auto cursor = seq.begin();
 			auto end = seq.end();
-			for (; begin != end; ++begin) {
-				const T& ele = *begin;
+			for (; cursor != end; ++cursor) {
+				const T& ele = *cursor;
 				push_unchecked(ele);
 			}
-			return;
+			return *this;
 		}
 
-		auto begin = seq.begin();
+		auto cursor = seq.begin();
 		auto end = seq.end();
-		for (; begin != end; ++begin) {
-			const T& ele = *begin;
+		for (; cursor != end; ++cursor) {
+			const T& ele = *cursor;
 			push(ele);
 		}
+		return *this;
 	}
 
-	inline void clear() { _size = 0; }
+	inline This& clear() {
+		_size = 0;
+		return *this;
+	}
 
 	[[nodiscard]] std::string printable_string() const override {
 		std::string buf;

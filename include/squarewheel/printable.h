@@ -15,15 +15,12 @@ public:
 
 }
 
-//template<>
-//struct fmt::formatter<sw::Printable> {
-//	template<typename ParseContext>
-//	constexpr auto parse(ParseContext& ctx) {
-//		return ctx.begin();
-//	}
-//
-//	template<typename FormatContext>
-//	auto format(const sw::Printable& obj, FormatContext& ctx) const -> decltype(ctx.out) {
-//		return fmt::format_to(ctx.out(), "{}", obj.printable_string());
-//	};
-//};
+template<typename T>
+struct fmt::formatter<
+		T,
+		std::enable_if<std::is_base_of<sw::Printable, T>::value, char>
+> : fmt::formatter<std::string> {
+	auto format(const T& obj, fmt::format_context& ctx) {
+		return fmt::format_to(ctx.out(), "{}", obj.printable_string());
+	};
+};

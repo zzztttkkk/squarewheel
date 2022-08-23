@@ -5,6 +5,7 @@
 #pragma once
 
 #include "./printable.h"
+#include <cstring>
 
 namespace sw {
 
@@ -20,7 +21,7 @@ private:
 public:
 	SimpleBitmap() = default;
 
-	virtual ~SimpleBitmap() { delete[] _ptr; }
+	virtual ~SimpleBitmap() { std::free(_ptr); }
 
 	[[nodiscard]] inline UT size() const { return _size; }
 
@@ -45,10 +46,9 @@ public:
 	UT preallocate(UT val) {
 		auto q = val / 64;
 		if (q + 1 > _size) {
-			auto nptr = new UT[q + 1];
+			auto nptr = reinterpret_cast<UT*>(std::calloc(q + 1, sizeof(UT)));
 			std::memcpy(nptr, _ptr, _size * sizeof(UT));
-			std::memset(nptr + _size, 0, (q - _size + 1) * sizeof(UT));
-			delete[] _ptr;
+			std::free(_ptr);
 			_ptr = nptr;
 			_size = q + 1;
 		}
