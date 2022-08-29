@@ -8,7 +8,7 @@
 #include <optional>
 #include <functional>
 
-#include "./common.h"
+#include "../common.h"
 #include "./printable.h"
 #include "./bitmap.h"
 

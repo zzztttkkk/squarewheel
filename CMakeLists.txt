@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(Libs "")
 
 if (${MSVC})
-	add_compile_options(/utf-8 /wd4005)
+	add_compile_options(/utf-8 /wd4005 /await:strict)
 	add_definitions(-D_WIN32_WINNT=0x0601)
 elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 	add_compile_options(-fcoroutines)
@@ -14,7 +14,9 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
 endif ()
 
 find_package(fmt CONFIG REQUIRED)
-set(Libs "${Libs};fmt::fmt")
+find_package(libuv CONFIG REQUIRED)
+set(Libs "${Libs};fmt::fmt;$<IF:$<TARGET_EXISTS:uv_a>,uv_a,uv>")
+
 
 function(cs_link_libs name)
 	target_link_libraries(${name} PUBLIC ${Libs})
